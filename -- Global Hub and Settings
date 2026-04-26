@@ -1,0 +1,85 @@
+-- Global Hub and Settings
+getgenv().Settings = getgenv().Settings or {
+    GUI = {
+        PrimaryColor = Color3.fromRGB(10, 20, 50),
+        SecondaryColor = Color3.fromRGB(20, 50, 100),
+        AccentColor = Color3.fromRGB(100, 180, 255)
+    },
+    ESP_Enabled = false,
+    Aimbot_Enabled = false,
+    Smoothness = 0.2,
+    FOV_Radius = 300,
+    FOV_Visible = false,
+    FOVCircleColor = Color3.fromRGB(255, 255, 255),
+    EnemyColor = Color3.fromRGB(255, 50, 50),
+    AllyColor = Color3.fromRGB(50, 255, 50),
+    VisibleColor = Color3.fromRGB(50, 255, 50),
+    NotVisibleColor = Color3.fromRGB(255, 50, 50),
+    PrioritizeVisible = true,
+    PrioritizeProximity = true,
+    NPC_ESP_Enabled = false,
+    NPC_Aimbot_Enabled = false,
+    NPCVisibleColor = Color3.fromRGB(255, 105, 180),
+    NPCNotVisibleColor = Color3.fromRGB(170, 50, 255),
+    DeadColor = Color3.fromRGB(255, 255, 0),
+    CorpseESP_Enabled = false,
+    ESP_MaxDist = 500,
+    NPC_ESP_MaxDist = 500,
+    NightVision_Enabled = false,
+    RemoveFog_Enabled = false,
+    AimbotTarget = "Head",
+    Prediction_Enabled = false,
+    NoVisor_Enabled = false,
+    SpeedEnabled = false,
+    CustomSpeed = 16,
+    OriginalSpeed = 16
+}
+getgenv().Hub = getgenv().Hub or { CleanupTasks = {} }
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local LocalPlayer = Players.LocalPlayer
+-- Key system
+local ValidKey = "123"
+local KeyFilePath = "ProjectDeltaKey.txt"
+local KeyValid = false
+if isfile and isfile(KeyFilePath) then
+    if readfile(KeyFilePath) == ValidKey then KeyValid = true end
+end
+getgenv().Hub.KeyValid = KeyValid
+
+-- Notification
+getgenv().Hub.Notify = function(title, text, duration)
+    StarterGui:SetCore("SendNotification", {
+        Title = title,
+        Text = text,
+        Duration = duration or 2,
+    })
+end
+
+-- Register cleanup
+getgenv().Hub.RegisterCleanup = function(func)
+    table.insert(getgenv().Hub.CleanupTasks, func)
+end
+
+-- Unload function
+getgenv().Hub.Unload = function()
+    getgenv().Settings.Unloaded = true -- set a flag
+    for _, task in ipairs(getgenv().Hub.CleanupTasks) do
+        pcall(task)
+    end
+    pcall(function()
+        game:GetService("RunService"):UnbindFromRenderStep("UnifiedAimbot")
+    end)
+    -- The GUI will be destroyed by a cleanup task added by GUI module
+    StarterGui:SetCore("SendNotification", {
+        Title = "Project Delta Hub",
+        Text = "Hub unloaded successfully!",
+        Duration = 3,
+    })
+end
+
+print("Project Delta Hub Core loaded.")

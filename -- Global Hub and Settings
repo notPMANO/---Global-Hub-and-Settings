@@ -1,85 +1,58 @@
--- Global Hub and Settings
-getgenv().Settings = getgenv().Settings or {
-    GUI = {
-        PrimaryColor = Color3.fromRGB(10, 20, 50),
-        SecondaryColor = Color3.fromRGB(20, 50, 100),
-        AccentColor = Color3.fromRGB(100, 180, 255)
-    },
-    ESP_Enabled = false,
-    Aimbot_Enabled = false,
-    Smoothness = 0.2,
-    FOV_Radius = 300,
-    FOV_Visible = false,
-    FOVCircleColor = Color3.fromRGB(255, 255, 255),
-    EnemyColor = Color3.fromRGB(255, 50, 50),
-    AllyColor = Color3.fromRGB(50, 255, 50),
-    VisibleColor = Color3.fromRGB(50, 255, 50),
-    NotVisibleColor = Color3.fromRGB(255, 50, 50),
-    PrioritizeVisible = true,
-    PrioritizeProximity = true,
-    NPC_ESP_Enabled = false,
-    NPC_Aimbot_Enabled = false,
-    NPCVisibleColor = Color3.fromRGB(255, 105, 180),
-    NPCNotVisibleColor = Color3.fromRGB(170, 50, 255),
-    DeadColor = Color3.fromRGB(255, 255, 0),
-    CorpseESP_Enabled = false,
-    ESP_MaxDist = 500,
-    NPC_ESP_MaxDist = 500,
-    NightVision_Enabled = false,
-    RemoveFog_Enabled = false,
-    AimbotTarget = "Head",
-    Prediction_Enabled = false,
-    NoVisor_Enabled = false,
-    SpeedEnabled = false,
-    CustomSpeed = 16,
-    OriginalSpeed = 16
-}
-getgenv().Hub = getgenv().Hub or { CleanupTasks = {} }
--- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
-local StarterGui = game:GetService("StarterGui")
-local LocalPlayer = Players.LocalPlayer
--- Key system
-local ValidKey = "123"
-local KeyFilePath = "ProjectDeltaKey.txt"
-local KeyValid = false
-if isfile and isfile(KeyFilePath) then
-    if readfile(KeyFilePath) == ValidKey then KeyValid = true end
-end
-getgenv().Hub.KeyValid = KeyValid
+-- ===== Loader Script (final, replace entire file with this) =====
+-- Entry point for Project Delta Hub.
+-- Fetches remote key list, loads all modules from raw GitHub URLs.
 
--- Notification
-getgenv().Hub.Notify = function(title, text, duration)
-    StarterGui:SetCore("SendNotification", {
-        Title = title,
-        Text = text,
-        Duration = duration or 2,
-    })
-end
+-- 1. Remote key list
+local keyListURL = "https://raw.githubusercontent.com/notPMANO/-Loader-Script-for-Project-Delta-Hub-/refs/heads/main/Keys"
+local validKeys = {}
 
--- Register cleanup
-getgenv().Hub.RegisterCleanup = function(func)
-    table.insert(getgenv().Hub.CleanupTasks, func)
-end
-
--- Unload function
-getgenv().Hub.Unload = function()
-    getgenv().Settings.Unloaded = true -- set a flag
-    for _, task in ipairs(getgenv().Hub.CleanupTasks) do
-        pcall(task)
+local success, err = pcall(function()
+    local response = game:HttpGet(keyListURL)
+    for line in response:gmatch("[^\r\n]+") do
+        local trimmed = line:gsub("^%s*(.-)%s*$", "%1")
+        if trimmed ~= "" then
+            validKeys[trimmed] = true
+        end
     end
-    pcall(function()
-        game:GetService("RunService"):UnbindFromRenderStep("UnifiedAimbot")
-    end)
-    -- The GUI will be destroyed by a cleanup task added by GUI module
-    StarterGui:SetCore("SendNotification", {
-        Title = "Project Delta Hub",
-        Text = "Hub unloaded successfully!",
-        Duration = 3,
-    })
+end)
+
+if not success or next(validKeys) == nil then
+    validKeys["123"] = true  -- emergency fallback
+    warn("Remote key list failed. Fallback key: 123")
 end
 
-print("Project Delta Hub Core loaded.")
+getgenv().KeyValidator = {
+    list = validKeys,
+    check = function(key)
+        return validKeys[key] == true
+    end
+}
+
+-- 2. Module raw URLs
+local modules = {
+    Core     = "https://raw.githubusercontent.com/notPMANO/---Module_Core.lua-/refs/heads/main/%3D%3D%3D%3D%3D%20Module_Core.lua%20%3D%3D%3D%3D%3D",
+    Render   = "https://raw.githubusercontent.com/notPMANO/-Module_Render.lua-/6c0340a97176d868b182bb879aa0ef9dfbd1032a/%3D%3D%3D%3D%3D%20Module_Render.lua%20%3D%3D%3D%3D%3D",
+    Aimbot   = "https://raw.githubusercontent.com/notPMANO/-Module_Aimbot.lua-/8154f7d531652b5a221ce0f0d17f46e61a44b16d/%3D%3D%3D%3D%3D%20Module_Aimbot.lua%20%3D%3D%3D%3D%3D",
+    Movement = "https://raw.githubusercontent.com/notPMANO/-Module_Movement.lua-/0b7d77363c9804eaab31cb691263d87bc8b331cd/%3D%3D%3D%3D%3D%20Module_Movement.lua%20%3D%3D%3D%3D%3D",
+    GUI      = "https://raw.githubusercontent.com/notPMANO/-Module_GUI.lua-/b92a3413286d51797ef8bea04c2ae6e9a6b4178c/%3D%3D%3D%3D%3D%20Module_GUI.lua%20%3D%3D%3D%3D%3D"
+}
+
+local function loadModule(url)
+    local status, result = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
+    if not status then
+        warn("Failed to load module: " .. url .. " - " .. tostring(result))
+    else
+        print("Module loaded: " .. url)
+    end
+end
+
+-- 3. Load in strict dependency order
+loadModule(modules.Core)
+loadModule(modules.Render)
+loadModule(modules.Aimbot)
+loadModule(modules.Movement)
+loadModule(modules.GUI)
+
+print("Project Delta Hub fully loaded with remote key validation.")
